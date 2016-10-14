@@ -605,11 +605,12 @@ defmodule Tds.Types do
   end
 
   def encode_binary_type(%Parameter{value: value}) do
+		bs = byte_size(value)
     length =
-      if value == nil do
+      if value == nil or bs > 8000 do
         <<0xFF, 0xFF>>
       else
-        <<byte_size(value)::little-unsigned-16>>
+        <<bs::little-unsigned-16>>
       end
     type = @tds_data_type_bigvarbinary
     data = <<type>> <> length
@@ -979,6 +980,7 @@ defmodule Tds.Types do
       else
         byte_size(value)
       end
+		if size > 8000, do: size = "max"					
     "varbinary(#{size})"
   end
 
@@ -991,7 +993,12 @@ defmodule Tds.Types do
 
   def encode_data(@tds_data_type_bigvarbinary, value, _) do
     if value != nil do
-      <<byte_size(value)::little-unsigned-16>> <> value
+			bs = byte_size(value)
+			if bs > 8000 do
+				encode_plp(value)
+			else
+				<<bs::little-unsigned-16>> <> value
+			end
     else
       <<@tds_plp_null::little-unsigned-64>>
     end
